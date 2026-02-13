@@ -1,0 +1,17 @@
+blur prime: forse
+opening closing: no, in foto 21 c'è perimetro da 2px e poi c'è forellino da 1px
+circularity: no, 1 px di forellino ha alta circularity anche se va sassato
+rumore: NON usare blur/op/close per stessi motivi, usa filtro aree
+
+usare gauss con kernel 3x3 non funziona, 5x5 si, 7x7 si ma troppo... delicato
+gaus rischia di aprire bordi stretti con pessima illuminazione
+(inoltre rischia di fondere le terne ma vabbeh)
+
+closing in realtà è perfetto MA problema potrebbe non reggere caso critico di triade
+
+=> scelta finale: un closing non troppo conservativo a kernel 3x3
+in realtà un gaussian filter 3x3 con sigma automatico risolve il problema MA assottiglia
+quindi dopo sarebbe meglio fare closing 
+ma allora... facciamo direttamente closing e bona
+in piu closing 3x3 ottimo per chiuedere ponticelli
+in piu closing 3x3 ottimo per smussare mini dentini!

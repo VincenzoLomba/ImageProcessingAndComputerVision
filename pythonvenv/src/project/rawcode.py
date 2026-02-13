@@ -1,0 +1,139 @@
+
+# This file contains the raw code for the project. Let's experiment!
+# Starting with all used imports
+from pathlib import Path
+import cv2
+import numpy as np
+from matplotlib import pyplot as plt
+
+# Defining the image lists for the first and second tasks (NOTICE: images are expected in grayscale)
+actualDirectory = Path(__file__).resolve().parent
+imagesPath = actualDirectory / 'data/images'
+outputsPath = actualDirectory / 'data/images/outputs'
+outputsPath.mkdir(exist_ok=True)
+firstTaskImagesNames = ['Tesi00.bmp', 'Tesi01.bmp', 'Tesi12.bmp', 'Tesi21.bmp', 'Tesi31.bmp', 'Tesi33.bmp']
+secondTaskImagesNames = {
+    1: ['Tesi44.bmp', 'Tesi47.bmp', 'Tesi48.bmp', 'Tesi49.bmp'],
+    2: ['Tesi50.bmp', 'Tesi51.bmp'],
+    3: ['Tesi90.bmp', 'Tesi92.bmp', 'Tesi98.bmp']
+}
+realImagesNamesMap = {file.name.lower(): file.name for file in imagesPath.iterdir() if file.is_file() and file.suffix.lower() == '.bmp'}
+firstTaskImagesRealNames = [realImagesNamesMap.get(name.lower()) for name in firstTaskImagesNames if name.lower() in realImagesNamesMap]
+secondTaskImagesRealNames = {
+    key: [realImagesNamesMap.get(name.lower()) for name in names if name.lower() in realImagesNamesMap]
+    for key, names in secondTaskImagesNames.items()
+}
+if len(firstTaskImagesRealNames) != len(firstTaskImagesNames):
+    missing = set(name.lower() for name in firstTaskImagesNames) - set(realImagesNamesMap.keys())
+    raise FileNotFoundError(f"Missing images for the first task ({', '.join(missing)})")
+for key, names in secondTaskImagesNames.items():
+    missing = set(name.lower() for name in names) - set(realImagesNamesMap.keys())
+    if missing:
+        raise FileNotFoundError(f"Missing images for the second task (key {key}) ({', '.join(missing)})")
+
+# Starting with T1 (in this task, ASSOMPTIONS labelled as strong are ones that are gonna be addressed in T2)
+
+generateFigures = False
+
+imagesT1 = [cv2.imread(str(imagesPath / name), cv2.IMREAD_GRAYSCALE) for name in firstTaskImagesRealNames]
+i = 0
+for image in imagesT1:
+    
+    size = image.shape
+    i += 1
+    print(f"\nImage {i} (size {size})")
+
+    # Be aware: gaussian filtering of the original image may be helpful as well as dangerous (thinning & altering rings thickness)
+    # k = 3
+    # sigma = (k - 1) / 6.0
+    # imageBlur = cv2.GaussianBlur(image, (k, k), 0)
+
+    hist, bins = np.histogram(image.flatten(), 256, [0,256])
+    otsuThreshold, binaryImage = cv2.threshold(
+        image,               # Input image (grayscale)
+        0,                   # Threshold value (not used when using Otsu's method, so set to 0) 
+        255,                 # Value to assign to pixels above the threshold
+        cv2.THRESH_BINARY +  # First flag, indicates binary thresholding (default Flag specified here only for clarity)
+        cv2.THRESH_OTSU      # Second flag, indicates relying on Otsu's method (to determine the optimal threshold value)
+    )                        # BKG will be associated to 255 (white), FRG/BLOLB will be associated to 0 (black)
+                             # (beacuse we're supposing that in the original image BKG is white-like and GRG/BLOBs are black-like)
+
+    cv2.imwrite(str(outputsPath / firstTaskImagesNames[i-1]), binaryImage)
+
+    if generateFigures:
+        plt.figure(figsize=(10,8))
+        plt.subplot(2,2,1)
+        plt.imshow(image, cmap='gray', vmin=0, vmax=255)
+        plt.title(f"Image {firstTaskImagesNames[i-1]} {image.shape}")
+        plt.subplot(2,2,2)
+        plt.imshow(binaryImage, cmap='gray', vmin=0, vmax=255)
+        plt.title(f"Binary {firstTaskImagesNames[i-1]} (Otsu's Threshold: {otsuThreshold})")
+        plt.subplot(2,1,2)
+        plt.title(f"Histogram of {firstTaskImagesNames[i-1]} with Otsu's Threshold {otsuThreshold}")
+        plt.stem(hist)
+        plt.axvline(x=otsuThreshold, color='r', linestyle='--', linewidth=2)
+        plt.show()
+
+    # Be aware: strong ASSUMPTION here, considering rods as the only BLOBs (connected components) present in the binary image
+    # Be aware: let's use 8-connectivity due to some rods rings beeing potentally thin and/or broken ALIAS with diagonal blocks
+    # Be aware: string ASSUMPTION, different BLOBs/rods are considerably separeted from each other
+    # How the method behaves: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#ga107a78bf7cd25dec05fb4dfc5c9e765f
+    # What are the STATS: https://docs.opencv.org/3.4/d3/dc0/group__imgproc__shape.html#gac7099124c0390051c6970a987e7dc5c5
+    # Pay attention: in morphological operations, connectedComponentsWithStats and findContours...
+    # ...BKG is considered to be 0 (black) and the FRG is considered to be non-zero
+    numLabels, labelsImage, stats, centroids = cv2.connectedComponentsWithStats(cv2.bitwise_not(binaryImage), connectivity = 8)
+
+    print(labelsImage.dtype)
+
+    closingKernelSize = 3
+
+    for BLOB in range(1, numLabels):  # Pay attention: we are starting from 1 to skip the background label (alias 0)
+
+        STAT_LEFT, STAT_TOP, STAT_WIDTH, STAT_HEIGHT, STAT_AREA = stats[BLOB]
+        ROI = labelsImage[STAT_TOP:STAT_TOP+STAT_HEIGHT, STAT_LEFT:STAT_LEFT+STAT_WIDTH].copy() # Be aware: labelsImage contains int32 numbers
+        ROI[ROI != BLOB] = 0 # Getting rid of other BLOBs
+        ROIheight, ROIwidth = ROI.shape
+        padding = closingKernelSize // 2 # (padding the ROI to avoid defects in the latter closing morphological operation)
+        paddedROI = np.zeros((ROIheight + 2*padding, ROIwidth + 2*padding), dtype=ROI.dtype)
+        paddedROI[padding:ROIheight + padding, padding:ROIwidth + padding] = ROI
+        paddedROI = (paddedROI != 0).astype(np.uint8) # Back to using uint8, that "morphologyEx" prefers (we've set 0 as BKG, 1 as FRG)
+        top = STAT_TOP - padding   # Pay attention: MAY be negative
+        left = STAT_LEFT - padding # Pay attention: MAY be negative
+        closedROI = cv2.morphologyEx(paddedROI, cv2.MORPH_CLOSE, np.ones((closingKernelSize,closingKernelSize), np.uint8))
+
+        # Given the assumptions written above, "closedROI" il a BLOB which is SURELY a rod AND...
+        # ...without holes except for the expected ones (rings, one or two)
+        # That means, using "findContours" on "closedROI" we SURELY get:
+        # - one contour for the external border of the rod (the one we are interested in) (external contour)
+        # - one contour for each ring (one or two) (internal contours)
+        # And NO MORE contours (no noise, no other BLOBs, no holes except for the expected ones)!
+        # How the method behaves: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0
+        # Retrival Modes: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga819779b9857cc2f8601e6526a3a5bc71
+        # Contour Approximation Modes: https://docs.opencv.org/4.x/d3/dc0/group__imgproc__shape.html#ga4303f45752694956374734a03c54d5ff
+        # Relying on algorithm: https://docs.opencv.org/4.x/d0/de3/citelist.html#CITEREF_suzuki85
+        # NOTICE: "findContours" is based on the notion of 8-connectivity!
+        contours, hierarchy = cv2.findContours(
+            closedROI.copy(),           # binary imahe from which extract contours (0 as BKG, non-zero as FRG)
+            cv2.RETR_CCOMP,             # this retrival mode makes retrived contours organized in externals and internals
+                                        # in that case, hierarchy[0][i][3] (that contains the index of the parent contour) will be -1...
+                                        # ...IFF contour i is an external one (the 0 index is necessary for hyerarchy-python-structure reasons)
+            cv2.CHAIN_APPROX_NONE       # this approximation mode makes sure to retrive ALL the points of the contours (no approximation, no compression)
+        )
+        externalContours = [contours[i] for i in range(len(contours)) if hierarchy[0][i][3] == -1]
+        internalContours = [contours[i] for i in range(len(contours)) if hierarchy[0][i][3] != -1]
+
+        # Be aware: the single contour (from either of the two lists) has shape (N, 1, 2)
+        # => dealing on broadcasting, it can be summed to an array of shape (1, 1, 2)
+        externalContoursOriginalImage = [contour + np.array([[[left, top]]]) for contour in externalContours]
+        internalContoursOriginalImage = [contour + np.array([[[left, top]]]) for contour in internalContours]
+        allContoursOriginalImage = externalContoursOriginalImage + internalContoursOriginalImage
+        imageRGB = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+        for contour in allContoursOriginalImage:
+            contourPoints = contour.reshape(-1, 2) # we pass from shape (N, 1, 2) to shape (N, 2)
+            Xs = contourPoints[:, 0]
+            Ys = contourPoints[:, 1]
+            imageRGB[Ys, Xs] = [255, 0, 0]
+        
+        plt.figure()
+        plt.imshow(imageRGB)
+        plt.show()
