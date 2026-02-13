@@ -4,12 +4,12 @@
 
 [![VincenzoLomba - ImageProcessingAndComputerVision](https://img.shields.io/static/v1?label=VincenzoLomba&message=ImageProcessingAndComputerVision&color=green&logo=github)](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision "Go to GitHub repo")
 
-# Distributed Autonomous Systems Teaching
+# Image Processing And Computer Vision
 
 This repository contains all the code developed during the lessons of [Image Processing And Computer Vision](https://www.unibo.it/en/study/course-units-transferable-skills-moocs/course-unit-catalogue/course-unit/2025/529890),  
 a course within the [Automation Engineering degree program](https://corsi.unibo.it/2cycle/AutomationEngineering) at [Alma Mater Studiorum – University of Bologna](https://www.unibo.it/en/homepage).  
 <br/>
-The code is written in [Python](https://www.python.org/about/). Projects and exercises are developed using [Visual Studio Code](https://code.visualstudio.com/) as the preferred editor.
+The code is written in [Python](https://www.python.org/about/) relying on the usage of the [Jupyter Notebook](https://docs.jupyter.org/en/latest/) tool. Projects and exercises are developed using [Visual Studio Code](https://code.visualstudio.com/) as the preferred editor.
 <br>
 Visit [src](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tree/master/pythonvenv/src) if you're interested in the code folder.
 
