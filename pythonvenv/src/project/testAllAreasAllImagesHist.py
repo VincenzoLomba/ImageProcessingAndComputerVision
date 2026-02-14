@@ -41,6 +41,7 @@ for image in imagesT1:
     
     size = image.shape
     i += 1
+    print(f"\nImage {i} (size {size})")
 
     # Be aware: if our objective is to get rid of spurious white pixels in the BLOBs (present due to immulination issues),
     # gaussian filtering of the original image may be helpful as well as dangerous (thinning & altering rings thickness,
@@ -93,13 +94,14 @@ for image in imagesT1:
     numLabels, labelsImage, stats, centroids = cv2.connectedComponentsWithStats(cv2.bitwise_not(binaryImage), connectivity = 8)
 
     closingKernelSize = 3
+
     for BLOB in range(1, numLabels):  # Pay attention: we are starting from 1 to skip the background label (alias 0)
 
         STAT_LEFT, STAT_TOP, STAT_WIDTH, STAT_HEIGHT, STAT_AREA = stats[BLOB]
         ROI = labelsImage[STAT_TOP:STAT_TOP+STAT_HEIGHT, STAT_LEFT:STAT_LEFT+STAT_WIDTH].copy() # Be aware: labelsImage contains int32 numbers
         ROI[ROI != BLOB] = 0 # Getting rid of other BLOBs
         ROIheight, ROIwidth = ROI.shape
-        padding = closingKernelSize # (padding the ROI to avoid defects in the latter closing morphological operation)
+        padding = closingKernelSize // 2 # (padding the ROI to avoid defects in the latter closing morphological operation)
         paddedROI = np.zeros((ROIheight + 2*padding, ROIwidth + 2*padding), dtype=ROI.dtype)
         paddedROI[padding:ROIheight + padding, padding:ROIwidth + padding] = ROI
         paddedROI = (paddedROI != 0).astype(np.uint8) # Back to using uint8, that "morphologyEx" prefers (we've set 0 as BKG, 1 as FRG)
@@ -147,7 +149,9 @@ for image in imagesT1:
 
 # Proceeding with T2
 
-generateFiguresT2 = True
+generateFiguresT2 = False
+
+allH = []
 
 secondTaskImagesRealNamesFlatten = [name for namesList in secondTaskImagesRealNames.values() for name in namesList]
 imagesT2 = [cv2.imread(str(imagesPath / name), cv2.IMREAD_GRAYSCALE) for name in secondTaskImagesRealNamesFlatten]
@@ -158,11 +162,12 @@ for image in imagesT2:
     # with the main objective of cleaning the image and getting rid of spurious noise in the BKG which is NOT RELATED to BLOBs
     # (we are indeed addressing the problem "dirty inspection area due to the presence of scattered iron powder")
     # Cool remark: this gaussing filter also domesticate well scattered borders of screws-distractors
-    k = 3
+    k = 5
     image = cv2.GaussianBlur(image, (k, k), 0)
 
     size = image.shape
     i += 1
+    print(f"\nImage {i} (size {size})")
     hist, bins = np.histogram(image.flatten(), bins = 256, range = [0,256])
     otsuThreshold, binaryImage = cv2.threshold(
         image,
@@ -192,60 +197,40 @@ for image in imagesT2:
 
     numLabels, labelsImage, stats, centroids = cv2.connectedComponentsWithStats(cv2.bitwise_not(binaryImage), connectivity = 8)
 
-    # We add here a step in which we filter-out "BLOBs with very small area compared to the rest",
+    # We add here a step in which we filter-out BLOBs with very small area compared to the rest,
     # considered to be spurious noise in the BKG which is NOT RELATED to BLOBs which is survived to the initial gaussian filtering step.
     # Important: why not avoid the initial gaussian filtering and directly realy on this methodology?
     # The main reason is that the initial gaussian filtering step is also very helpful to get rid of the part of this spurios noise that,
     # after segmentation-thresholding, would be connected to the BLOBs (and thus cannot be filtered-out with this area-based filtering step).
-    #
-    # How to actually perform all of this, alias, how to choose how to threshold areas to filter-out?
-    # It's quite relevant to notice that in the single binary image thay MAY NOT AT ALL be present BLOBs to filter-out!
-    # Indeed, the spurious noise in the BKG which is NOT RELATED to BLOBs may:
-    # - be completely absent in the binary image from the beginning (even excluding the initial gaussian filtering step)
-    # - already been completely cancelled by the initial gaussian filtering step (thus being completely absent in the binary image)
-    # Indeed, this step is a "refinement" step, addressing potentially NOT present survivors.
-    # For that reason, we cannot rely purely of some "automatic selection of the threshold" from the BLOBs-area extracted from the single binary image,
-    # but instead we need some "a-priori knowledge" on the various BLOBs-area that in general we expect to get.
-    #
-    # Indeed, we know that, in the particular application we are dealing with, the area of the rods is WAY bigger than the area of the spurios noise
-    # in the BKG which is NOT RELATED to BLOBs, AND also viceversa, we know that the area of these seconds is WAY smaller than the area of the rods
-    # AND way smaller than the area of potentially present distractors (that we like to NOT confound as not BLOB-like elements, if possible).
-    # Indeed, observing the images we are provided with, we can clearly see that 100 is a perfectly functioning threshold value for our case.
-    #
-    # BE VERY AWARE: this reasoning is HIGHLY RELATED to the dimension of the grayscale-images we are provided with!
-    # Indeed, it is FOUNDAMENTAL to be sure that they are sized accordingly to the one size we based our reasoned choice of the threshold!
-    # We need a check / normalization step at the beginning, in our case, of size 255x256 pixels.
 
-    areas = stats[1:, cv2.CC_STAT_AREA] # Excluding the area of the background label ("connectedComponentsWithStats" guarantees its position in "stats" is at index 0)
-    AREA_THRESHOLD = 100
-    numLabelsValid = np.where(areas > AREA_THRESHOLD)[0] + 1 # We get surviving indexes referred to "areas" with np.where(areas > AREA_THRESHOLD)[0],
-                                                             # then we rectify them to be referred to "stats" by summing 1
-    BLOBs = numLabelsValid
+    areas = stats[:, cv2.CC_STAT_AREA]
+    areas = areas[1:] # Excluding the area of the background label ("connectedComponentsWithStats" guarantees its position is "stats" is at index 0)
+    maximumBlobArea = binaryImage.shape[0] * binaryImage.shape[1] # areas.max()
+    hist, bins = np.histogram(areas, bins = maximumBlobArea+1, range = [0, maximumBlobArea+1])
 
-    # Let's add a check for actully having some BLOBs to process
-    # (notice: the ooutput will be in terms of RODs, that are the BLOBs we are ACTUALLY interested in)
-    if len(BLOBs) == 0: raise ValueError(f"No RODs to analyze found in the image {secondTaskImagesRealNamesFlatten[i-1]}!")
+    allH.append(hist)
+
+    if generateFiguresT2:
+        plt.figure()
+        plt.title(f"Histogram of BLOBs areas in {secondTaskImagesRealNamesFlatten[i-1]}")
+        plt.stem(hist)
+        plt.show()
 
     closingKernelSize = 3
-    extContours = []
-    intContours = []
-    tosps = []
-    lefts = []
-    ROIs = []
-    for BLOB in BLOBs:  # Pay attention: we are starting from 1 to skip the background label (alias 0)
+
+    for BLOB in range(1, numLabels):  # Pay attention: we are starting from 1 to skip the background label (alias 0)
 
         STAT_LEFT, STAT_TOP, STAT_WIDTH, STAT_HEIGHT, STAT_AREA = stats[BLOB]
         ROI = labelsImage[STAT_TOP:STAT_TOP+STAT_HEIGHT, STAT_LEFT:STAT_LEFT+STAT_WIDTH].copy() # Be aware: labelsImage contains int32 numbers
         ROI[ROI != BLOB] = 0 # Getting rid of other BLOBs
         ROIheight, ROIwidth = ROI.shape
-        padding = closingKernelSize # (padding the ROI to avoid defects in the latter closing morphological operation)
+        padding = closingKernelSize // 2 # (padding the ROI to avoid defects in the latter closing morphological operation)
         paddedROI = np.zeros((ROIheight + 2*padding, ROIwidth + 2*padding), dtype=ROI.dtype)
         paddedROI[padding:ROIheight + padding, padding:ROIwidth + padding] = ROI
         paddedROI = (paddedROI != 0).astype(np.uint8) # Back to using uint8, that "morphologyEx" prefers (we've set 0 as BKG, 1 as FRG)
         top = STAT_TOP - padding   # Pay attention: MAY be negative
         left = STAT_LEFT - padding # Pay attention: MAY be negative
-        # closedROI = cv2.morphologyEx(paddedROI, cv2.MORPH_CLOSE, np.ones((closingKernelSize,closingKernelSize), np.uint8))
-        closedROI = paddedROI.copy()
+        closedROI = cv2.morphologyEx(paddedROI, cv2.MORPH_CLOSE, np.ones((closingKernelSize,closingKernelSize), np.uint8))
 
         # Given the assumptions written above, "closedROI" il a BLOB which is SURELY a rod AND...
         # ...without holes except for the expected ones (rings, one or two)
@@ -273,129 +258,33 @@ for image in imagesT2:
         externalContoursOriginalImage = [contour + np.array([[[left, top]]]) for contour in externalContours]
         internalContoursOriginalImage = [contour + np.array([[[left, top]]]) for contour in internalContours]
         allContoursOriginalImage = externalContoursOriginalImage + internalContoursOriginalImage
-
-        # NEW ELEMENT: let's kepp track of BLOBs NOT having internal contours, alias not having internal holes!
-        if len(internalContours) != 0:
-            # Backupping usefoul data...
-            extContours.append(externalContoursOriginalImage[0])
-            intContours.append(internalContoursOriginalImage)
-            tosps.append(top)
-            lefts.append(left)
-            ROIs.append(closedROI)
-
-            if len(internalContoursOriginalImage) == 1: continue
-
         imageRGB = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         for contour in allContoursOriginalImage:
             contourPoints = contour.reshape(-1, 2) # we pass from shape (N, 1, 2) to shape (N, 2)
             Xs = contourPoints[:, 0]
             Ys = contourPoints[:, 1]
             imageRGB[Ys, Xs] = [255, 0, 0]
-        imageClosureComparing = cv2.cvtColor(cv2.bitwise_not(closedROI*255), cv2.COLOR_GRAY2RGB)
-        imageClosureComparing[closedROI != 0] = [255, 0, 0]
-        imageClosureComparing[paddedROI != 0] = [0, 0, 0]
-        #if generateFiguresT2:
-        #    plt.figure()
-        #    plt.subplot(1,2,1)
-        #    plt.imshow(imageRGB)
-        #    plt.subplot(1,2,2)
-        #    plt.imshow(imageClosureComparing)
-        #    plt.show()
-
-    # Let's preserve ONLY the BLOBs that have internal contours (no internal contours means not beeing a candidate ROD)
-
-    print(len(extContours))
-    print(len(ROIs))
-
-    for BLOBindex in range(len(ROIs)):
-
-        if len(intContours[BLOBindex]) == 1: continue
-
-        plt.figure()
-        plt.imshow(ROIs[BLOBindex])
-        plt.show()
-
-        extCont = extContours[BLOBindex].reshape(-1, 2)
-        N = len(extCont)
-        B = 3
-        if 2*B >= N: continue # Not a BLOB
-
-        Bcov = 5
-
-        theta = np.zeros(N, dtype=float)
-        curvature = np.zeros(N, dtype=float)
-        for thetai in range(N):
-            # Arcs Curavture
-            p2 = extCont[(thetai+B)%N]
-            p1 = extCont[(thetai-B)%N]
-            arc = p2 - p1
-            deltaX = arc[0]
-            deltaY = arc[1]
-            theta[thetai] = np.arctan2(deltaY, deltaX)
-            # Covariance curvature
-            indexes = (np.arange(thetai-Bcov, thetai+Bcov+1) % N)
-            covPoints = extCont[indexes]
-            mu = np.mean(covPoints, axis=0)
-            covPointsStar = covPoints - mu
-            covMatrix = covPointsStar.T @ covPointsStar / len(covPoints)
-            eigenvalues, _ = np.linalg.eig(covMatrix)
-            minimumEigenValue = min(eigenvalues)
-            maximumEigenValue = max(eigenvalues)
-            # print(f"Minimum eigenvalue: {minimumEigenValue}, Maximum eigenvalue: {maximumEigenValue}")
-            curvature[thetai] = minimumEigenValue / (minimumEigenValue + maximumEigenValue) # between 0 and 1/2
-
-        theta = np.unwrap(theta)
-        import scipy.ndimage as ndi
-        radious = B//2
-        thetaBlur = ndi.gaussian_filter1d(theta, sigma=radious/3, mode='reflect', radius=radious)
-        deltaThetaRAW = np.roll(thetaBlur, -1) - thetaBlur
-        deltaTheta = (deltaThetaRAW + np.pi) % (2*np.pi) - np.pi
-
-        x = np.arange(len(theta))
-        plt.figure()
-        plt.plot(x, np.degrees(theta))
-        plt.title(f"Theta ({np.abs(np.degrees(theta[-1])-np.degrees(theta[0]))})")
-        plt.xlabel("Indice punto sul contorno")
-        plt.ylabel("Theta [rad]")
-        plt.grid(True)
-        plt.show()
-        plt.plot(x, np.degrees(thetaBlur))
-        plt.title(f"Theta ({np.abs(np.degrees(theta[-1])-np.degrees(theta[0]))})")
-        plt.xlabel("Indice punto sul contorno SMOOTHED")
-        plt.ylabel("Theta [rad]")
-        plt.grid(True)
-        plt.show()
-        plt.figure()
-        plt.plot(x, np.degrees(deltaTheta))
-        plt.title(f"DeltaTheta (curvatura semplice)")
-        plt.xlabel("Indice punto sul contorno")
-        plt.ylabel("DeltaTheta [rad]")
-        plt.grid(True)
-        plt.show()
-        plt.figure()
-        plt.plot(x, curvature)
-        plt.title(f"Curvature (curvatura covarianza)")
-        plt.xlabel("Indice punto sul contorno")
-        plt.ylabel("Curvature [adimensional]")
-        plt.ylim(0, 0.5)
-        plt.grid(True)
-        plt.show()
-        plt.figure()
-
-        mask = curvature >= 0.2
-        d = np.diff(mask.astype(np.int8))
-        starts = np.where(d == 1)[0] + 1
-        ends   = np.where(d == -1)[0]
-        if mask[0]:
-            starts = np.r_[0, starts]
-        if mask[-1]:
-            ends = np.r_[ends, N-1]
-
-        segments = []
-        print("SEGMENTS:")
-        for s, e in zip(starts, ends):
-            segments.append([int(s), int(e)]) 
-            print(np.abs(int(s)-int(e)))
-        print("END SEGMENTS")
         
+        if generateFiguresT2:
+            plt.figure()
+            plt.imshow(imageRGB)
+            plt.show()
 
+h = np.sum(allH, axis=0)
+nonZeeroIndexes = np.nonzero(h)[0]
+h = h[:nonZeeroIndexes[-1]+1]
+
+threshold = 200
+nonZeeroIndexesUnderThreshold = np.nonzero(h[:threshold])[0]
+index = nonZeeroIndexesUnderThreshold[-1]
+print("Max area: ", index)
+
+plt.figure()
+plt.stem(h)
+plt.axvline(x=threshold, color='r', linestyle='--', linewidth=2)
+plt.show()
+
+h = h[:threshold]
+plt.figure()
+plt.stem(h)
+plt.show()
