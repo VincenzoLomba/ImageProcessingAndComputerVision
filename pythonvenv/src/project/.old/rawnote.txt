@@ -15,3 +15,6 @@ quindi dopo sarebbe meglio fare closing
 ma allora... facciamo direttamente closing e bona
 in piu closing 3x3 ottimo per chiuedere ponticelli
 in piu closing 3x3 ottimo per smussare mini dentini!
+
+
+IN FONDO COSA IN PIU: bella svezz, aggiungiamo riconoscimento concavità/convessità?
