@@ -1,6 +1,8 @@
 
 # This Python file contains all the parameters used in the project.
 # You can quickly change their values here, then observe the effects of these changes re-running the Jupyter Notebook file.
+from enum import Enum
+import numpy as np
 
 # The expected common size (in pixels) of the working images
 imagesExpectedShape = (255, 256)
@@ -14,5 +16,5 @@ secondTaskImagesFolderPath = BASE_DIRECTORY / 'data/images/SecondTask'
 # The expected file extension of the working images (as a list of admissible extensions), WITH the dot included
 workingImagesExtension = ['bmp']
 
-# Connectivity to be used for connected components labeling (8-way is suggested)
-CONNECTIVITY = 8
+# Structuring element to be used for the erosion operation that is applyed to discern spurious internal holes from actual ones
+structuringElement = np.ones((3, 3), np.uint8)

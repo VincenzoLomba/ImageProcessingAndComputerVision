@@ -6,43 +6,54 @@ import matplotlib.patches as mpatches
 import cv2
 import numpy as np
 
-def plotBinarizationResults(indices, names, images, binaryImages, histograms, otsuThresholds):
+def plotBinarizationResults(indices, names, images, binaryImages, histograms = None, otsuThresholds = None):
     """
     A simple method to plot the results of the binarization process.
     For each image, a figure with three subplots is shown: the original image, its gray-level histogram and the corresponding binary image.
     Otsu's threshold is also shown in the histogram subplot as a vertical red line.
     """
+    withHystograms = (histograms is not None) and (otsuThresholds is not None)
     for index in indices:
 
-        plt.figure(figsize=(12, 3))
+        if withHystograms:
+            plt.figure(figsize=(12, 3))
+        else: 
+            plt.figure(figsize=(10, 4))
 
-        # Original image (top-left)
-        plt.subplot(1, 4, 1)
+        # Original image
+        if withHystograms:
+            plt.subplot(1, 4, 1)
+        else: 
+            plt.subplot(1, 2, 1)
         plt.imshow(images[index], cmap='gray', vmin=0, vmax=255)
         plt.title(f'Original image ({names[index]})')
         
-        # Binary image (top-right)
-        plt.subplot(1, 4, 2)
+        # Binary image
+        if withHystograms:
+            plt.subplot(1, 4, 2)
+        else: 
+            plt.subplot(1, 2, 2)
         plt.imshow(binaryImages[index], cmap='gray', vmin=0, vmax=255)
         plt.title(f'Binary image ({names[index]})')
         
-        # Histogram (bottom, full width)
-        plt.subplot(1, 4, (3, 4))
-        plt.bar(range(256), histograms[index], width=1)
-        #_, _, baseLine = plt.stem(histograms[index])
-        #plt.setp(baseLine, visible=False)
-        plt.axvline(x=otsuThresholds[index], color='r', linestyle='--', label=f"Otsu's threshold: {otsuThresholds[index]}")
-        plt.title(f'Gray-level Histogram ({names[index]})')
-        plt.xlabel('Gray-level')
-        plt.ylabel('Counts')
-        plt.legend()
+        if withHystograms:
+            # Histogram (bottom, full width)
+            plt.subplot(1, 4, (3, 4))
+            plt.bar(range(256), histograms[index], width=1)
+            #_, _, baseLine = plt.stem(histograms[index])
+            #plt.setp(baseLine, visible=False)
+            plt.axvline(x=otsuThresholds[index], color='r', linestyle='--', label=f"Otsu's threshold: {otsuThresholds[index]}")
+            plt.title(f'Gray-level Histogram ({names[index]})')
+            plt.xlabel('Gray-level')
+            plt.ylabel('Counts')
+            plt.legend()
         
         plt.tight_layout()
         plt.show()
 
 def plotImageConnectedComponents(image, binaryImage, BLOBs):
     """
-    A simple method to plot the results of the connected components labeling process (for a single image, both for grayscale and binary versions).
+    A simple method to plot the results of the connected components labeling process (for a SINGLE image, both for grayscale and binary versions).
     """
     plt.figure(figsize=(10, 4))
     # https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.Colormap.html?utm_source=chatgpt.com
