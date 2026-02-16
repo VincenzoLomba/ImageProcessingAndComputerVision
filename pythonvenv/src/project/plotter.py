@@ -89,3 +89,22 @@ def plotImageConnectedComponents(image, binaryImage, BLOBs):
     plt.tight_layout()
     plt.show()
 
+def plotSpuriousHolesFilled(originalROI, filledROI, invalidInternalContours):
+    """
+    A simple method to plot the results of the spurious holes filling process.
+    """
+    originalROIRGB = cv2.cvtColor(originalROI, cv2.COLOR_GRAY2RGB)
+    filledROIRGB   = cv2.cvtColor(filledROI,   cv2.COLOR_GRAY2RGB)
+    for invalidContour in invalidInternalContours:
+        xs = invalidContour[:, 0, 0] # Expected shape of contour: (N, 1, 2)
+        ys = invalidContour[:, 0, 1] # Expected shape of contour: (N, 1, 2)
+        originalROIRGB[ys, xs] = (255, 0, 0)
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.title('Original ROI (spurious internal contours in red)')
+    plt.imshow(originalROIRGB)
+    plt.subplot(1, 2, 2)
+    plt.imshow(filledROIRGB)
+    plt.title('ROI with filled spurious holes')
+    plt.tight_layout()
+    plt.show()
