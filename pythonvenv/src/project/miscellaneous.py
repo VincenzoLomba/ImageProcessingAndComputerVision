@@ -42,6 +42,20 @@ def loadImages(task: Task):
     
     return names, images
 
+def computeCovariance2D(points: np.ndarray):
+    """
+    A simple method that compute the covariance matrix for a set of 2D points,
+    returning related eigenvalues/eigenvectors (in eigenvalues-ascending order, with normalized eigenvectors).
+    """
+    if points.ndim != 2 or points.shape[1] != 2: raise ValueError(f"Unexpected input shape (for the \"computeCovariance2D\" method). Expected (N, 2), got {points.shape}")
+    N = points.shape[0]
+    if N < 2: raise ValueError(f"At least 2 points required to compute a 2D covariance matrix (got {N}).")
+    mu = points.mean(axis=0, keepdims=True) # keepdims=True used to maintain the shape (1, 2)
+    pointsStar = points-mu
+    covMatrix = pointsStar.T @ pointsStar / N
+    eigenvalues, eigenvectors = np.linalg.eigh(covMatrix) # returns eigenvalues in ascending order and the corresponding normalized eigenvectors as columns (https://numpy.org/devdocs/reference/generated/numpy.linalg.eigh.html)
+    return eigenvalues, eigenvectors
+
 class RodType(Enum): A = 1; B = 2
 @dataclass
 class RodBLOB:
