@@ -144,20 +144,20 @@ def plotBLOBAnalysis(imagesNames, images, BLOBs):
                     label=f"CRod {BLOB.label} (type {BLOB.type.name})"
                 )
             )
-            # Connecting-rod MER center
-            cx, cy = BLOB.centerMER
-            cv2.circle(imageRGB, (int(round(cx)), int(round(cy))), 3, (0, 0, 0), thickness=-1)
             # Connecting-rod MER
-            box = cv2.boxPoints(((float(cx), float(cy)),
-                     (float(BLOB.length), float(BLOB.width)),
-                     float(np.rad2deg(BLOB.angleMER))))
+            cx, cy = BLOB.centerBB
+            theta = float(BLOB.orientationModuloPI)
+            box = cv2.boxPoints(
+                ((float(cx), float(cy)),
+                (float(BLOB.length), float(BLOB.width)),
+                float(np.rad2deg(theta)))
+            )
             box = np.int32(np.round(box))
             cv2.polylines(imageRGB, [box], isClosed=True, color=tuple(int(v) for v in colorsRGB[BLOBindex]), thickness=1, lineType=cv2.LINE_8)
             # Connecting-rod position (alias barycenter/centroid)
             cx, cy = BLOB.centroid
             cv2.circle(imageRGB, (int(round(cx)), int(round(cy))), 3, (255, 0, 0), thickness=-1)
             # Connecting-rod orientation
-            theta = float(BLOB.moduloPIorientation)
             quarterL = 0.25 * float(BLOB.length)
             dx = quarterL * np.cos(theta)
             dy = quarterL * np.sin(theta)
@@ -195,5 +195,27 @@ def plotBLOBAnalysis(imagesNames, images, BLOBs):
         plt.title(f'Image {name} BLOB analysis')
         plt.legend(handles=legendElements)
         plt.imshow(imageRGB)
+    plt.tight_layout()
+    plt.show()
+
+def plotContoursEnhanced(originalROI, newROI, point, radius):
+    """
+    A simple method to plot an example of beneficial effects due to the usage of Gaussian filtering at the begin of the processing pipeline.
+    """
+    originalRGB = cv2.cvtColor(originalROI, cv2.COLOR_GRAY2RGB)
+    newRGB = cv2.cvtColor(newROI, cv2.COLOR_GRAY2RGB)
+    cx, cy = int(point[0]), int(point[1])
+    r = int(radius)
+    cv2.circle(originalRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+    cv2.circle(newRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+
+    plt.figure(figsize=(12, 6))
+    plt.subplot(1, 2, 1)
+    plt.title("Original ROI")
+    plt.imshow(originalRGB)
+    plt.subplot(1, 2, 2)
+    plt.title("Enhanced ROI")
+    plt.imshow(newRGB)
+
     plt.tight_layout()
     plt.show()

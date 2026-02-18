@@ -7,7 +7,6 @@ from enum import Enum
 import string
 import cv2
 import numpy as np
-from dataclasses import dataclass
 
 class Connectivity(Enum): FOUR_CONNECTIVITY = 4; EIGHT_CONNECTIVITY = 8
 
@@ -55,27 +54,3 @@ def computeCovariance2D(points: np.ndarray):
     covMatrix = pointsStar.T @ pointsStar / N
     eigenvalues, eigenvectors = np.linalg.eigh(covMatrix) # returns eigenvalues in ascending order and the corresponding normalized eigenvectors as columns (https://numpy.org/devdocs/reference/generated/numpy.linalg.eigh.html)
     return eigenvalues, eigenvectors
-
-class RodType(Enum): A = 1; B = 2
-@dataclass
-class RodBLOB:
-    imageName: str
-    label: int
-    STAT_LEFT: np.int32
-    STAT_TOP: np.int32
-    STAT_AREA: np.int32
-    ROI: np.typing.NDArray[np.uint8]
-    centroid: tuple[np.float64, np.float64]
-    externalContour: np.typing.NDArray[np.int32] = None # nparray of shape (N, 2)
-    internalContours: list[np.typing.NDArray[np.int32]] = None # list of nparrays of shape (N, 2)
-    type: RodType = None
-    moduloPIorientation: np.float64 = None
-    length: np.float64 = None
-    width: np.float64 = None
-    centerMER: tuple[np.float64, np.float64] = None
-    angleMER: np.float64 = None
-    widthAtBarycenter: np.float64 = None
-    holesCenters: list[tuple[np.float64, np.float64]] = None
-    holesDiameters: list[np.float64] = None
-    
-
