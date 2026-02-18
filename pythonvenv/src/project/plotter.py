@@ -144,7 +144,16 @@ def plotBLOBAnalysis(imagesNames, images, BLOBs):
                     label=f"CRod {BLOB.label} (type {BLOB.type.name})"
                 )
             )
-            # Connecting-rod position
+            # Connecting-rod MER center
+            cx, cy = BLOB.centerMER
+            cv2.circle(imageRGB, (int(round(cx)), int(round(cy))), 3, (0, 0, 0), thickness=-1)
+            # Connecting-rod MER
+            box = cv2.boxPoints(((float(cx), float(cy)),
+                     (float(BLOB.length), float(BLOB.width)),
+                     float(np.rad2deg(BLOB.angleMER))))
+            box = np.int32(np.round(box))
+            cv2.polylines(imageRGB, [box], isClosed=True, color=tuple(int(v) for v in colorsRGB[BLOBindex]), thickness=1, lineType=cv2.LINE_8)
+            # Connecting-rod position (alias barycenter/centroid)
             cx, cy = BLOB.centroid
             cv2.circle(imageRGB, (int(round(cx)), int(round(cy))), 3, (255, 0, 0), thickness=-1)
             # Connecting-rod orientation

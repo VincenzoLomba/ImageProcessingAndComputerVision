@@ -72,6 +72,8 @@ class RodBLOB:
     moduloPIorientation: np.float64 = None
     length: np.float64 = None
     width: np.float64 = None
+    centerMER: tuple[np.float64, np.float64] = None
+    angleMER: np.float64 = None
     widthAtBarycenter: np.float64 = None
     holesCenters: list[tuple[np.float64, np.float64]] = None
     holesDiameters: list[np.float64] = None
