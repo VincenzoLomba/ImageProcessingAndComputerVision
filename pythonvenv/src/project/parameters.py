@@ -29,7 +29,7 @@ areaThreshold = 60
 distractorsIsotropicityThreshold = 0.2
 
 # This value specifies the size of the neighborhood (=2B+1) used to compute contours curvature (for each point)
-B = 4
+B = 5
 
 # The value (between 0 and 1/2) used to threshold the curvature measure C=λ1/(λ1+λ2)∈[0,1/2] of contours points (to individuate high-curvature points)
 curvatureThreshold = 0.2
