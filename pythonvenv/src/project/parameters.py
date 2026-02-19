@@ -23,4 +23,13 @@ structuringElement = np.ones((3, 3), np.uint8)
 gaussianFilterKernelSize = 3
 
 # The area threshold (in pixels) used to discern BLOBs not representative of actual objects (neither connectiong-rods nor distractors)
-areaThreshold = 100
+areaThreshold = 60
+
+# The value (between 0 and 1/2) used to threshold the isotropicity measure of BLOBs C=λ1/(λ1+λ2)∈[0,1/2] (to get rid of distractor, alias BLOBs with a very isotropic shape)
+distractorsIsotropicityThreshold = 0.2
+
+# This value specifies the size of the neighborhood (=2B+1) used to compute contours curvature (for each point)
+B = 4
+
+# The value (between 0 and 1/2) used to threshold the curvature measure C=λ1/(λ1+λ2)∈[0,1/2] of contours points (to individuate high-curvature points)
+curvatureThreshold = 0.2

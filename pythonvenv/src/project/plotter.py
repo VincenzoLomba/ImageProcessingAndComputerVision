@@ -5,46 +5,44 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import cv2
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict, Counter
 
-def plotBinarizationResults(indices, names, images, binaryImages, histograms = None, otsuThresholds = None):
+def plotBinarizationResults(indices, imagesNames, images, binaryImages, histograms = None, otsuThresholds = None):
     """
     A simple method to plot the results of the binarization process.
-    For each image, a figure with three subplots is shown: the original image, its gray-level histogram and the corresponding binary image.
-    Otsu's threshold is also shown in the histogram subplot as a vertical red line.
     """
-    withHystograms = (histograms is not None) and (otsuThresholds is not None)
+    withHistograms = (histograms is not None) and (otsuThresholds is not None)
     for index in indices:
 
-        if withHystograms:
+        if withHistograms:
             plt.figure(figsize=(12, 3))
         else: 
             plt.figure(figsize=(10, 4))
 
         # Original image
-        if withHystograms:
+        if withHistograms:
             plt.subplot(1, 4, 1)
         else: 
             plt.subplot(1, 2, 1)
         plt.imshow(images[index], cmap='gray', vmin=0, vmax=255)
-        plt.title(f'Original image ({names[index]})')
+        plt.title(f'Original image ({imagesNames[index]})')
         
         # Binary image
-        if withHystograms:
+        if withHistograms:
             plt.subplot(1, 4, 2)
         else: 
             plt.subplot(1, 2, 2)
         plt.imshow(binaryImages[index], cmap='gray', vmin=0, vmax=255)
-        plt.title(f'Binary image ({names[index]})')
+        plt.title(f'Binary image ({imagesNames[index]})')
         
-        if withHystograms:
+        if withHistograms:
             # Histogram (bottom, full width)
             plt.subplot(1, 4, (3, 4))
             plt.bar(range(256), histograms[index], width=1)
-            #_, _, baseLine = plt.stem(histograms[index])
-            #plt.setp(baseLine, visible=False)
+            # _, _, baseLine = plt.stem(histograms[index])
+            # plt.setp(baseLine, visible=False)
             plt.axvline(x=otsuThresholds[index], color='r', linestyle='--', label=f"Otsu's threshold: {otsuThresholds[index]}")
-            plt.title(f'Gray-level Histogram ({names[index]})')
+            plt.title(f'Gray-level Histogram ({imagesNames[index]})')
             plt.xlabel('Gray-level')
             plt.ylabel('Counts')
             plt.legend()
@@ -60,11 +58,22 @@ def produceColorMap(N):
         [colorsMap(i)[:3] for i in range(N)]
     )*255).astype(np.uint8)
 
-def plotImageConnectedComponents(image, binaryImage, BLOBs):
+def plotImageConnectedComponents(
+        image, binaryImage, BLOBs,
+        values1 = None, threshold1 = None, histName1 = None, xLabel1 = None, yLabel1 = None,
+        redBLOBs = None, orangeBLOBs = None,
+        values2 = None, threshold2 = None, histName2 = None, xLabel2 = None, yLabel2 = None):
     """
     A simple method to plot the results of the connected components labeling process (for a SINGLE image, both for grayscale and binary versions).
     """
-    plt.figure(figsize=(10, 4))
+    withHistogram = (values1 is not None) and (threshold1 is not None) and (histName1 is not None) and (xLabel1 is not None) and (yLabel1 is not None)
+    withDoubleHistogram = withHistogram and (values2 is not None) and (threshold2 is not None) and (histName2 is not None) and (xLabel2 is not None) and (yLabel2 is not None)
+    
+    if withHistogram:
+        plt.figure(figsize=(12, 3))
+    else: 
+        plt.figure(figsize=(10, 4))
+
     colorsMap, colorsRGB = produceColorMap(len(BLOBs))
     imageRGB = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
     binaryImageRGB = cv2.cvtColor(binaryImage, cv2.COLOR_GRAY2RGB)
@@ -73,7 +82,8 @@ def plotImageConnectedComponents(image, binaryImage, BLOBs):
         ysROI, xsROI = np.where(BLOB.ROI != 0) # Retrieve row and column indexes of BLOB pixels within its ROI
         ys = ysROI + int(BLOB.STAT_TOP)
         xs = xsROI + int(BLOB.STAT_LEFT)
-        imageRGB[ys, xs] = colorsRGB[index]
+        # if not withHistogram:
+            # imageRGB[ys, xs] = colorsRGB[index]
         binaryImageRGB[ys, xs] = colorsRGB[index]
         legendElements.append(
             mpatches.Patch(
@@ -81,15 +91,72 @@ def plotImageConnectedComponents(image, binaryImage, BLOBs):
                 label=f"Label {BLOB.label}"
             )
         )
+    if redBLOBs is not None:
+        for BLOB in redBLOBs:
+            ysROI, xsROI = np.where(BLOB.ROI != 0) # Retrieve row and column indexes of BLOB pixels within its ROI
+            ys = ysROI + int(BLOB.STAT_TOP)
+            xs = xsROI + int(BLOB.STAT_LEFT)
+            binaryImageRGB[ys, xs] = (255, 0, 0)
+    if orangeBLOBs is not None:
+        for BLOB in orangeBLOBs:
+            ysROI, xsROI = np.where(BLOB.ROI != 0) # Retrieve row and column indexes of BLOB pixels within its ROI
+            ys = ysROI + int(BLOB.STAT_TOP)
+            xs = xsROI + int(BLOB.STAT_LEFT)
+            binaryImageRGB[ys, xs] = (255, 165, 0)
 
-    plt.subplot(1, 2, 1)
-    plt.title(f'Original image ({BLOBs[0].imageName}) with Rods BLOBs')
-    plt.legend(handles=legendElements)
+    if not withHistogram:
+        plt.subplot(1, 2, 1)
+        plt.title(f'Original image ({BLOBs[0].imageName})')
+        # plt.title(f'Original image ({BLOBs[0].imageName}) with Rods BLOBs')
+        # plt.legend(handles=legendElements)
+    else: 
+        plt.subplot(1, 4, 1)
+        plt.title(f'Original image ({BLOBs[0].imageName})')
+        # plt.legend(handles=legendElements, loc="upper left" if withDoubleHistogram else "lower left")
     plt.imshow(imageRGB)
-    plt.subplot(1, 2, 2)
-    plt.title(f'Binary image ({BLOBs[0].imageName}) with Rods BLOBs')
-    plt.legend(handles=legendElements)
+    if not withHistogram:
+        plt.subplot(1, 2, 2)
+        plt.title(f'Binary image ({BLOBs[0].imageName}) with labeled BLOBs')
+        plt.legend(handles=legendElements)
+    else: 
+        plt.subplot(1, 4, 2)
+        plt.title(f'Binary image ({BLOBs[0].imageName})')
+        plt.legend(handles=legendElements, loc="upper left" if withDoubleHistogram else "lower left")
     plt.imshow(binaryImageRGB)
+    if withHistogram:
+        if not withDoubleHistogram:
+            plt.subplot(1, 4, (3,4))
+        else:
+            plt.subplot(1, 4, 3)
+        # First histogram
+        dictCounts = Counter(values1)
+        sortedAreas, counts = zip(*sorted(dictCounts.items()))
+        xAxisPositions = range(len(sortedAreas))
+        plt.bar(xAxisPositions, counts)
+        plt.xticks(xAxisPositions, sortedAreas) # Set explicit labels for x-axis values
+        plt.title(f'{histName1}s Histogram ({BLOBs[0].imageName})')
+        plt.xlabel(xLabel1)
+        plt.ylabel(yLabel1)
+        idx = sum(v < threshold1 for v in sortedAreas) # "v < threshold1" boolean interpreted as integer
+        plt.axvline(x=idx-0.5, color='r', linestyle='--', label=f"{histName1} threshold: {threshold1}")
+        if withDoubleHistogram: plt.ylim(0, max(dictCounts.values())+0.3)
+        plt.legend()
+        if withDoubleHistogram:
+            plt.subplot(1, 4, 4)
+            # Second histogram
+            dictCounts = Counter(values2)
+            sortedValues2, counts = zip(*sorted(dictCounts.items()))
+            xAxisPositions = range(len(sortedValues2))
+            plt.bar(xAxisPositions, counts)
+            labels = [f"{x:.4f}" for x in sortedValues2]
+            plt.xticks(xAxisPositions, labels) # Set explicit labels for x-axis values
+            plt.title(f'{histName2}s Histogram ({BLOBs[0].imageName})')
+            plt.xlabel(xLabel2)
+            plt.ylabel(yLabel2)
+            idx = sum(v < threshold2 for v in sortedValues2) # "v < threshold2" boolean interpreted as integer
+            plt.axvline(x=idx-0.5, color='r', linestyle='--', label=f"{histName2} threshold: {threshold2}")
+            plt.ylim(0, max(dictCounts.values())+0.3)
+            plt.legend()
     plt.tight_layout()
     plt.show()
 
@@ -198,24 +265,44 @@ def plotBLOBAnalysis(imagesNames, images, BLOBs):
     plt.tight_layout()
     plt.show()
 
-def plotContoursEnhanced(originalROI, newROI, point, radius):
+def plotContoursEnhanced(imageName, image, blurredImage, binaryImageOld, binaryImageNew, BLOBs, holes, point, radius):
     """
-    A simple method to plot an example of beneficial effects due to the usage of Gaussian filtering at the begin of the processing pipeline.
+    A simple method to plot an example (for a SINGLE image) of beneficial effects due to the usage of Gaussian filtering at the begin of the processing pipeline.
     """
-    originalRGB = cv2.cvtColor(originalROI, cv2.COLOR_GRAY2RGB)
-    newRGB = cv2.cvtColor(newROI, cv2.COLOR_GRAY2RGB)
+    exampleBLOBs = ([b for b in BLOBs if b.imageName == imageName and len(b.internalContours) == holes])
+    if len(exampleBLOBs) == 0: raise ValueError(f"No extracted BLOB with {holes} holes found for image '{imageName}'")
+    xROI, yROI = int(exampleBLOBs[0].STAT_LEFT), int(exampleBLOBs[0].STAT_TOP)
+    hROI, wROI = exampleBLOBs[0].ROI.shape
+    ROIoriginal = image[yROI:yROI+hROI, xROI:xROI+wROI]
+    ROIblurred = blurredImage[yROI:yROI+hROI, xROI:xROI+wROI]
+    ROIbefore = binaryImageOld[yROI:yROI+hROI, xROI:xROI+wROI]
+    ROIafter = binaryImageNew[yROI:yROI+hROI, xROI:xROI+wROI]
+
+    originalRGB = cv2.cvtColor(ROIoriginal, cv2.COLOR_GRAY2RGB)
+    blurredRGB = cv2.cvtColor(ROIblurred, cv2.COLOR_GRAY2RGB)
+    beforeRGB = cv2.cvtColor(ROIbefore, cv2.COLOR_GRAY2RGB)
+    afterRGB = cv2.cvtColor(ROIafter, cv2.COLOR_GRAY2RGB)
+
     cx, cy = int(point[0]), int(point[1])
     r = int(radius)
     cv2.circle(originalRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
-    cv2.circle(newRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+    cv2.circle(blurredRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+    cv2.circle(beforeRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+    cv2.circle(afterRGB, (cx, cy), r, (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
 
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.title("Original ROI")
+    plt.figure(figsize=(10, 10))
+    plt.subplot(2, 2, 1)
+    plt.title("Original ROI (unfiltered)")
     plt.imshow(originalRGB)
-    plt.subplot(1, 2, 2)
-    plt.title("Enhanced ROI")
-    plt.imshow(newRGB)
+    plt.subplot(2, 2, 2)
+    plt.title("Original ROI (filtered)")
+    plt.imshow(blurredRGB)
+    plt.subplot(2, 2, 3)
+    plt.title("After segmentation (no prior filtering)")
+    plt.imshow(beforeRGB)
+    plt.subplot(2, 2, 4)
+    plt.title("After segmentation (with prior filtering)")
+    plt.imshow(afterRGB)
 
     plt.tight_layout()
     plt.show()
