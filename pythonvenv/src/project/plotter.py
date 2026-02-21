@@ -319,7 +319,7 @@ def plotExternalContourCurvature(BLOB, externalContour, curvatureValues, curvatu
     #cv2.circle(RGBROI, (cx, cy), r, (255, 0, 0), thickness=-1, lineType=cv2.LINE_4)
     RGBROI[cy, cx] = (255, 0, 0)
     fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(12, 4.5))
-    ax0.set_title("ROI")
+    ax0.set_title(f"ROI (BLOB {BLOB.label} from image {BLOB.imageName})")
     ax0.imshow(RGBROI)
     ax1.set_title("Curvature values along the external contour")
     x = np.arange(len(curvatureValues))
@@ -331,5 +331,43 @@ def plotExternalContourCurvature(BLOB, externalContour, curvatureValues, curvatu
     ax1.set_ylim(0, 0.5)
     ax1.margins(x=0)
     ax1.legend()
+    plt.tight_layout()
+    plt.show()
+
+def plotHighCurvatureCouples(imagesNames, images, highCurvatureCouples, BLOBs):
+    indices = [i for i, name in enumerate(imagesNames) if name in highCurvatureCouples]
+    N = len(indices)
+    figureCols = 2
+    figureRows = N
+    figureH = 4*figureRows
+    figureW = 10
+    plt.figure(figsize=(figureW, figureH))
+    subPlotIndex = 0
+    for imageIndex in indices:
+        iName = imagesNames[imageIndex]
+        imageRGB = cv2.cvtColor(images[imageIndex], cv2.COLOR_GRAY2RGB)
+        couples = [couple for lst in highCurvatureCouples[iName].values() for couple in lst]
+        _, colorsRGB = produceColorMap(len(couples))
+        for index, (point1, point2) in enumerate(couples):
+            x1, y1 = int(point1[0]), int(point1[1])
+            x2, y2 = int(point2[0]), int(point2[1])
+            cv2.circle(imageRGB, (x1, y1), 4, color=tuple(int(v) for v in colorsRGB[index]), thickness=-1)
+            cv2.circle(imageRGB, (x2, y2), 4, color=tuple(int(v) for v in colorsRGB[index]), thickness=-1)
+            # cv2.line(imageRGB, (x1, y1), (x2, y2), (255, 0, 0), thickness=1, lineType=cv2.LINE_4)
+        plt.subplot(figureRows, figureCols, subPlotIndex+1)
+        plt.title(f"Original image ({iName})")
+        plt.imshow(imageRGB)
+        subPlotIndex += 1
+        binaryImage = np.zeros_like(images[imageIndex], dtype=np.uint8)
+        for BLOB in BLOBs:
+            if BLOB.imageName != iName: continue
+            ysROI, xsROI = np.where(BLOB.ROI != 0)
+            ys = ysROI + int(BLOB.STAT_TOP)
+            xs = xsROI + int(BLOB.STAT_LEFT)
+            binaryImage[ys, xs] = 255
+        plt.subplot(figureRows, figureCols, subPlotIndex+1)
+        plt.title(f"BLOB splitting results")
+        plt.imshow(binaryImage, cmap='gray', vmin=0, vmax=255)
+        subPlotIndex += 1
     plt.tight_layout()
     plt.show()
