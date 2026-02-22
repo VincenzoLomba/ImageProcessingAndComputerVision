@@ -58,18 +58,17 @@ def produceColorMap(N):
         [colorsMap(i)[:3] for i in range(N)]
     )*255).astype(np.uint8)
 
+
 def plotImageConnectedComponents(
         image, binaryImage, BLOBs,
         values1 = None, threshold1 = None, histName1 = None, xLabel1 = None, yLabel1 = None,
         redBLOBs = None, orangeBLOBs = None,
-        values2 = None, threshold2 = None, histName2 = None, xLabel2 = None, yLabel2 = None,
-        labels1 = None, labels2 = None
-        ):
+        values2 = None, threshold2 = None, histName2 = None, xLabel2 = None, yLabel2 = None):
     """
-    A method to plot the results of the connected components labeling process (for a SINGLE image, both for grayscale and binary versions).
+    A simple method to plot the results of the connected components labeling process (for a SINGLE image, both for grayscale and binary versions).
     """
     withHistogram = (values1 is not None) and (threshold1 is not None) and (histName1 is not None) and (xLabel1 is not None) and (yLabel1 is not None)
-    withDoublePlot = withHistogram and (values2 is not None) and (threshold2 is not None) and (histName2 is not None) and (xLabel2 is not None) and (yLabel2 is not None)
+    withDoubleHistogram = withHistogram and (values2 is not None) and (threshold2 is not None) and (histName2 is not None) and (xLabel2 is not None) and (yLabel2 is not None)
     
     if withHistogram:
         plt.figure(figsize=(12, 3))
@@ -123,44 +122,41 @@ def plotImageConnectedComponents(
     else: 
         plt.subplot(1, 4, 2)
         plt.title(f'Binary image ({BLOBs[0].imageName})')
-        plt.legend(handles=legendElements, loc="upper left" if withDoublePlot else "lower left")
+        plt.legend(handles=legendElements, loc="upper left" if withDoubleHistogram else "lower left")
     plt.imshow(binaryImageRGB)
     if withHistogram:
-        if not withDoublePlot:
-            # A single histogram
+        if not withDoubleHistogram:
             plt.subplot(1, 4, (3,4))
-            dictCounts = Counter(values1)
-            sortedAreas, counts = zip(*sorted(dictCounts.items()))
-            xAxisPositions = range(len(sortedAreas))
-            plt.bar(xAxisPositions, counts)
-            plt.xticks(xAxisPositions, sortedAreas) # Set explicit labels for x-axis values
-            plt.title(f'{histName1}s Histogram ({BLOBs[0].imageName})')
-            plt.xlabel(xLabel1)
-            plt.ylabel(yLabel1)
-            idx = sum(v < threshold1 for v in sortedAreas) # "v < threshold1" boolean interpreted as integer
-            plt.axvline(x=idx-0.5, color='r', linestyle='--', label=f"{histName1} threshold: {threshold1}")
-            plt.legend()
         else:
             plt.subplot(1, 4, 3)
-            # A couple of simple plots
-            # First one
-            x = np.arange(len(values1))
-            plt.plot(x, values1, marker='o')
-            plt.xticks(x, labels1)
-            plt.title(f'{histName1}s Plot ({BLOBs[0].imageName})')
-            plt.xlabel(xLabel1)
-            plt.ylabel(yLabel1)
-            plt.axhline(y=threshold1, color='r', linestyle='--', label=f"{histName1} threshold: {threshold1}")
-            plt.legend()
-            # Second one
+        # First histogram
+        dictCounts = Counter(values1)
+        sortedValues1, counts = zip(*sorted(dictCounts.items()))
+        xAxisPositions = range(len(sortedValues1))
+        plt.bar(xAxisPositions, counts)
+        plt.xticks(xAxisPositions, sortedValues1) # Set explicit labels for x-axis values
+        plt.title(f'{histName1}s Histogram ({BLOBs[0].imageName})')
+        plt.xlabel(xLabel1)
+        plt.ylabel(yLabel1)
+        idx = sum(v < threshold1 for v in sortedValues1) # "v < threshold1" boolean interpreted as integer
+        plt.axvline(x=idx-0.5, color='r', linestyle='--', label=f"{histName1} threshold: {threshold1}")
+        if withDoubleHistogram: plt.ylim(0, max(dictCounts.values())+0.3)
+        plt.legend()
+        if withDoubleHistogram:
             plt.subplot(1, 4, 4)
-            x = np.arange(len(values2))
-            plt.plot(x, values2, marker='o')
-            plt.xticks(x, labels2)
-            plt.title(f'{histName2}s Plot ({BLOBs[0].imageName})')
+            # Second histogram
+            dictCounts = Counter(values2)
+            sortedValues2, counts = zip(*sorted(dictCounts.items()))
+            xAxisPositions = range(len(sortedValues2))
+            plt.bar(xAxisPositions, counts)
+            labels = [f"{x:.4f}" for x in sortedValues2]
+            plt.xticks(xAxisPositions, labels) # Set explicit labels for x-axis values
+            plt.title(f'{histName2}s Histogram ({BLOBs[0].imageName})')
             plt.xlabel(xLabel2)
             plt.ylabel(yLabel2)
-            plt.axhline(y=threshold2, color='r', linestyle='--', label=f"{histName2} threshold: {threshold2}")
+            idx = sum(v < threshold2 for v in sortedValues2) # "v < threshold2" boolean interpreted as integer
+            plt.axvline(x=idx-0.5, color='r', linestyle='--', label=f"{histName2} threshold: {threshold2}")
+            plt.ylim(0, max(dictCounts.values())+0.3)
             plt.legend()
     plt.tight_layout()
     plt.show()

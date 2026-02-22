@@ -39,6 +39,7 @@ def loadImages(task: Task):
         image = cv2.imread(str(imagePath), cv2.IMREAD_GRAYSCALE)
         # cv2.imread documentation: https://docs.opencv.org/4.x/d4/da8/group__imgcodecs.html#gaffb68fce322c6e52841d7d9357b9ad2d
         if image is None or image.size == 0: raise OSError(f"Unexpected error while loading image: '{imagePath}'")
+        if image.shape != parameters.imagesExpectedShape: raise ValueError(f"Unexpected image shape for image '{imagePath}'. Expected {parameters.imagesExpectedShape}, got {image.shape}")
         names.append(imagePath.name.lower())
         images.append(image)
     
@@ -83,7 +84,7 @@ def breadthFirstSearchBFS(ROI, contours, startingPoint, endingPoint):
     """
     Implementation of a method to perform pathfinding (4-way connectivity) through a "search in amplitude" (indeed, breadth-first) strategy.
     Args:
-    - ROI: region of interest in which perform the search (it contains a single connected-component).
+    - ROI: region of interest in which perform the search (it should contain a single connected-component).
            This is a grid with 0-values for BKG and 255-values for FRG.
            The path will be searched as the minimum one (with breadth-first technique, alias "by levels") only living in FRG pixels.
     - contours: list of contours of the connected-component in the ROI (of course THEY MUST be referred to the ROI).
@@ -106,18 +107,17 @@ def breadthFirstSearchBFS(ROI, contours, startingPoint, endingPoint):
     # Defining (good) neighbors retriving method
     sx, sy = startingPoint
     ex, ey = endingPoint
-    SEx = ex-sx; SEy = ey-sy # vector from starting point to ending point
+    SEx = ex-sx; SEy = ey-sy # SE vector from starting point to ending point
     def retrieveNeighbors(point):
         x, y = point
         neighbors = []
         for nx, ny in ((x+1, y), (x, y-1), (x-1, y), (x, y+1)):
             if 0 <= nx < w and 0 <= ny < h and ROI[ny, nx] != 0 and obstacles[ny, nx] == 0:
-                SNx = nx - startingPoint[0]
-                SNy = ny - startingPoint[1]
-                distanceSigned = (SEx*SNy-SEy*SNx) # |SE⨯SN|=|SE|*|SN|*sinAngle(SE,SN)=|SEx*SNy-SEy*SNx| (|SE| is constant)
+                SNx = nx - startingPoint[0]; SNy = ny - startingPoint[1] # SN vector from starting point to the neighbor point
+                distanceSigned = (SEx*SNy-SEy*SNx) # |SE⨯SN|=|SE|*|SN|*sinAngle(SE,SN)=|SEx*SNy-SEy*SNx|=|SE|*|SNdistanceFromSE| (|SE| is constant)
                 distance2 = distanceSigned*distanceSigned
                 neighbors.append(((nx, ny), distance2))
-        # notice: the implemented BFS is slightly informed: in case of multiple pathes with the same lenght, we prefear the one that sticks more to the straight line between starting and ending points
+        # notice: the implemented BFS is slightly informed; in case of multiple pathes with the same lenght, we prefear the one that sticks more to the straight line between starting and ending points (alias sticks more to the SE vector)
         neighbors.sort(key=lambda el: el[1])
         return [n for n, _ in neighbors]
     # Initializing the endingList
