@@ -347,7 +347,8 @@ def plotHighCurvatureCouples(imagesNames, images, highCurvatureCouples, BLOBs):
     for imageIndex in indices:
         iName = imagesNames[imageIndex]
         imageRGB = cv2.cvtColor(images[imageIndex], cv2.COLOR_GRAY2RGB)
-        couples = [couple for lst in highCurvatureCouples[iName].values() for couple in lst]
+        couplesReferences = [coupleReference for lst in highCurvatureCouples[iName].values() for coupleReference in lst]
+        couples = [(contour1[idx1], contour2[idx2]) for (idx1, idx2, contour1, contour2) in couplesReferences]
         _, colorsRGB = produceColorMap(len(couples))
         for index, (point1, point2) in enumerate(couples):
             x1, y1 = int(point1[0]), int(point1[1])
@@ -359,16 +360,28 @@ def plotHighCurvatureCouples(imagesNames, images, highCurvatureCouples, BLOBs):
         plt.title(f"Original image ({iName})")
         plt.imshow(imageRGB)
         subPlotIndex += 1
-        binaryImage = np.zeros_like(images[imageIndex], dtype=np.uint8)
-        for BLOB in BLOBs:
-            if BLOB.imageName != iName: continue
+        H, W = images[imageIndex].shape
+        rgbImage = np.zeros((H, W, 3), dtype=np.uint8)
+        counts = np.zeros((H, W), dtype=np.uint16)
+        iBLOBs = [b for b in BLOBs if b.imageName == iName]
+        _, colorsRGB = produceColorMap(len(iBLOBs))
+        for BLOB in iBLOBs:
             ysROI, xsROI = np.where(BLOB.ROI != 0)
             ys = ysROI + int(BLOB.STAT_TOP)
             xs = xsROI + int(BLOB.STAT_LEFT)
-            binaryImage[ys, xs] = 255
+            counts[ys, xs] += 1
+        indexBLOB = 0
+        overlappingBLOBs = counts > 1
+        for BLOB in iBLOBs:
+            ysROI, xsROI = np.where(BLOB.ROI != 0)
+            ys = ysROI + int(BLOB.STAT_TOP)
+            xs = xsROI + int(BLOB.STAT_LEFT)
+            rgbImage[ys, xs] = colorsRGB[indexBLOB]
+            indexBLOB += 1
+        rgbImage[overlappingBLOBs] = (255, 0, 0) # red
         plt.subplot(figureRows, figureCols, subPlotIndex+1)
         plt.title(f"BLOB splitting results")
-        plt.imshow(binaryImage, cmap='gray', vmin=0, vmax=255)
+        plt.imshow(rgbImage)
         subPlotIndex += 1
     plt.tight_layout()
     plt.show()

@@ -19,7 +19,7 @@ workingImagesExtension = ['bmp']
 structuringElement = np.ones((3, 3), np.uint8)
 
 # Size S of the SxS Gaussian Filter kernel to be used for the smoothing operation applyed prior segmentation
-gaussianFilterKernelSize = 3
+filterKernelSize = 3
 
 # The area threshold (in pixels) used to discern BLOBs not representative of actual objects (neither connectiong-rods nor distractors)
 areaThreshold = 60

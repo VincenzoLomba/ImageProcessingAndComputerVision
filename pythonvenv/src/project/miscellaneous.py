@@ -157,3 +157,63 @@ def breadthFirstSearchBFS(ROI, contours, startingPoint, endingPoint):
         traveller = pointers[traveller]
     path.append(startingPoint)
     return np.asarray(path, dtype=np.int32) # notice: the path is returned as reversed (from "endingPoint" to "startingPoint")
+
+def search255OnContour(ROI, contour, startingIndex):
+    """
+    This method search for a 255-value point on a contour, starting from a given index and searching in both directions (forward and backward).
+    The indices of the first two found points (both forward and backward) are returned.
+    If no 255-value point is found, an exception is raised.
+    Be aware that the passed contour must be referred in its points to the passed ROI.
+    """
+    N = len(contour)
+    # Moving forward
+    k = 0
+    jf = 0
+    while True:
+        jf = (startingIndex + k) % N
+        x = contour[jf, 0]
+        y = contour[jf, 1]
+        if ROI[y, x] == 255: break
+        k += 1
+        if k > N: raise RuntimeError("No 255-value point found in the whole contour")
+    # Moving backward
+    k = 0
+    jb = 0
+    while True:
+        jb = (startingIndex - k) % N
+        x = contour[jb, 0]
+        y = contour[jb, 1]
+        if ROI[y, x] == 255: break
+        k += 1
+        if k > N: raise RuntimeError("No 255-value point found in the whole contour")
+    return jf, jb
+
+def informedFloodFill(ROI, seed):
+    """
+    This method performs a flood fill starting from a seed point (that of course must be within the ROI), implementing the following policy:
+    - 8-way connectivity is adopted
+    - 0-valued points cannot be visited
+    - 255-valued points can expand the flood-fill towards all neighbors that are NOT 0-valued
+    - x-valued points (where x is neither 0 nor 255) can expand the flood-fill only towards neighbors that are valued in the same way (x-valued neighbors)
+    """
+    h, w = ROI.shape
+    sx, sy = seed
+    if not (0 <= sx < w and 0 <= sy < h): raise ValueError("The provided seed is out of ROI bounds")
+    visited = np.zeros_like(ROI, dtype = np.uint8)
+    if ROI[sy, sx] == 0: return visited
+    def retrieveNeighbors(point):
+        x, y = point
+        neighbors = []
+        for nx, ny in ((x+1,y),(x-1,y),(x,y+1),(x,y-1),(x+1,y+1),(x+1,y-1),(x-1,y+1),(x-1,y-1)):
+            if 0 <= nx < w and 0 <= ny < h and ROI[ny, nx] != 0 and visited[ny, nx] == 0:
+                if ROI[y, x] == 255 or ROI[ny, nx] == ROI[y, x]:
+                    visited[ny, nx] = 255
+                    neighbors.append((nx, ny))
+        return neighbors
+    openList = deque() # OpenList as a FIFO queue
+    openList.append(seed)
+    visited[sy, sx] = 255
+    while len(openList) > 0:
+        popped = openList.popleft()
+        for toBeVisited in retrieveNeighbors(popped): openList.append(toBeVisited)
+    return visited
