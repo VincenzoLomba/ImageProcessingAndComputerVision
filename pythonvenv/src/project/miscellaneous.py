@@ -6,9 +6,9 @@ import parameters
 from enum import Enum
 from dataclasses import dataclass
 import numpy as np
+from numpy.typing import NDArray
 import string
 import cv2
-import numpy as np
 from collections import deque
 
 class Connectivity(Enum): FOUR_CONNECTIVITY = 4; EIGHT_CONNECTIVITY = 8
@@ -53,18 +53,18 @@ class CRodBLOB:
     STAT_LEFT: np.int32
     STAT_TOP: np.int32
     STAT_AREA: np.int32
-    ROI: np.typing.NDArray[np.uint8]
+    ROI: NDArray[np.uint8]
     centroid: tuple[np.float64, np.float64]
-    externalContour: np.typing.NDArray[np.int32] = None # nparray of shape (N, 2)
-    internalContours: list[np.typing.NDArray[np.int32]] = None # list of nparrays of shape (N, 2)
-    type: RodType = None
-    orientationModuloPI: np.float64 = None
-    length: np.float64 = None
-    width: np.float64 = None
-    centerBB: tuple[float, float] = None
-    widthAtBarycenter: np.float64 = None
-    holesCenters: list[tuple[np.float64, np.float64]] = None
-    holesDiameters: list[np.float64] = None
+    externalContour: NDArray[np.int32] | None = None # nparray of shape (N, 2)
+    internalContours: list[NDArray[np.int32]] | None = None # list of nparrays of shape (N, 2)
+    type: RodType | None = None
+    orientationModuloPI: np.float64 | None = None
+    length: np.float64 | None = None
+    width: np.float64 | None = None
+    centerBB: tuple[float, float] | None = None
+    widthAtBarycenter: np.float64 | None = None
+    holesCenters: list[tuple[np.float64, np.float64]] | None = None
+    holesDiameters: list[np.float64] | None = None
 
 def computeCovariance2D(points: np.ndarray):
     """
