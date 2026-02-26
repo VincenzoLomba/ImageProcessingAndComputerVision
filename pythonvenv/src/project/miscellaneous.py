@@ -1,5 +1,5 @@
 
-# This Python file (imported by the Jupyter Notebook file) contains some miscellaneous functions used in the project.
+# This Python file (imported by the Jupyter Notebook file) contains some miscellaneous functions and data structures used in the project.
 
 import parameters
 
