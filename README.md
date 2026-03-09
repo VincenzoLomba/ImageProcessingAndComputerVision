@@ -13,7 +13,7 @@ The code is written in [Python](https://www.python.org/about/) relying on the us
 <br>
 Visit [src](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tree/master/pythonvenv/src) if you're interested in the code folder.
 
-# A simple IP&CV project: Visual Inspection of Connecting Rods
+## A simple IP&CV project: Visual Inspection of Connecting Rods for the Aim of Vision-guided Robot Picking
 
 This repository also includes all about the development (in its choices and final results) of a software system aimed at visual inspection of motorcycle connecting-rods images, A.K.A. a system able to analyse the dimensions of different type of connecting-rods to allow a vision-guided robot to pick and sort them based on their type and dimensions. Visit the [official project folder](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tree/master/pythonvenv/src/project) if you're interested in it.
 
