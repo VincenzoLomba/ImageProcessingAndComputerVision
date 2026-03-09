@@ -15,7 +15,7 @@ Visit [src](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tr
 
 ### A simple IP&CV project: Visual Inspection of Connecting Rods for the Aim of Vision-guided Robot Picking
 
-This repository also includes all about the development (in its choices and final results) of a software system aimed at visual inspection of motorcycle connecting-rods images, A.K.A. a system able to analyse the dimensions of different type of connecting-rods to allow a vision-guided robot to pick and sort them based on their type and dimensions. Visit the [official project folder](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tree/master/pythonvenv/src/project) if you're interested in it.
+This repository also includes all about the development (in its choices and final results) of a software system aimed at visual inspection of motorcycle connecting-rods images, A.K.A. a system able to analyse (from grayscale images) the dimensions of different type of connecting-rods to allow a vision-guided robot to pick and sort them based on their type and dimensions. Visit the [official project folder](https://github.com/VincenzoLomba/ImageProcessingAndComputerVision/tree/master/pythonvenv/src/project) if you're interested in it.
 
 ### Some Useful Guides on Git Usage
 
